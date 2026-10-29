@@ -40,9 +40,22 @@ function UIController.new(player: Player)
 	end
 	local self = setmetatable({ gui = gui, status = status, detail = detail, targetLabel = targetLabel, noticeLabel = notice, buttons = buttons, noticeText = "En attente de l'état du serveur", actionCallback = nil, targetCallback = nil, connections = {} }, UIController)
 	for action, button in buttons do
-		table.insert(self.connections, button.Activated:Connect(function()
-			if self.actionCallback then self.actionCallback(action) end
-		end))
+		if action == "BeginWork" then
+			table.insert(self.connections, button.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Gamepad1 then
+					if self.actionCallback then self.actionCallback("BeginWork") end
+				end
+			end))
+			table.insert(self.connections, button.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Gamepad1 then
+					if self.actionCallback then self.actionCallback("EndWork") end
+				end
+			end))
+		else
+			table.insert(self.connections, button.Activated:Connect(function()
+				if self.actionCallback then self.actionCallback(action) end
+			end))
+		end
 	end
 	return self
 end
@@ -87,7 +100,7 @@ function UIController:Render(state: any, targetId: string?, pending: {[string]: 
 			break
 		end
 	end
-	self.targetLabel.Text = "Cible : " .. (targetId or "aucune") .. targetState .. " · Main : " .. tostring(myState and myState.heldItem or "vide") .. (if next(pending) then " · attente" else "")
+	self.targetLabel.Text = "Cible : " .. (targetId or "aucune") .. targetState .. (if targetId then "" else " · Approchez-vous d'une station") .. " · Main : " .. tostring(myState and myState.heldItem or "vide") .. (if next(pending) then " · attente" else "")
 	self.noticeLabel.Text = self.noticeText
 	local active = state.phase ~= "Closed" and state.phase ~= "Summary"
 	for action, button in self.buttons do

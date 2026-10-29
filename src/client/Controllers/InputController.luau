@@ -36,28 +36,29 @@ function InputController.new(player: Player, onAction: (string) -> (), onTarget:
 		local current = if result then result.Instance else nil
 		while current and current:GetAttribute("TargetId") == nil do current = current.Parent end
 		local id = if current then current:GetAttribute("TargetId") else nil
-		if typeof(id) == "string" and current and current:IsA("BasePart") and (current.Position - root.Position).Magnitude <= 12 then
+		if typeof(id) == "string" and result and (result.Instance.Position - root.Position).Magnitude <= 12 then
 			selectTarget(id)
 			return
 		end
-		-- A reachable station remains selectable with touch/gamepad even if the camera sees the floor.
-		if screenPoint == nil and (UserInputService.TouchEnabled or UserInputService.GamepadEnabled) then
-			local nearest = 12
-			local candidateId: string? = nil
-			local world = workspace:FindFirstChild("RestaurantSlice")
-			if world then
-				for _, part in world:GetChildren() do
-					local partId = part:GetAttribute("TargetId")
-					if typeof(partId) == "string" and part:IsA("BasePart") then
-						local distance = (part.Position - root.Position).Magnitude
+		-- Keep nearby stations selectable when the cursor/camera ray misses them.
+		local nearest = 12
+		local candidateId: string? = nil
+		local world = workspace:FindFirstChild("RestaurantSlice")
+		if world then
+			for _, instance in world:GetDescendants() do
+				if instance:IsA("BasePart") then
+					local partId = instance:GetAttribute("TargetId")
+					local targetInstance: Instance? = instance
+					while targetInstance and targetInstance:GetAttribute("TargetId") == nil do targetInstance = targetInstance.Parent end
+					if typeof(partId) ~= "string" and targetInstance then partId = targetInstance:GetAttribute("TargetId") end
+					if typeof(partId) == "string" then
+						local distance = (instance.Position - root.Position).Magnitude
 						if distance < nearest then nearest = distance; candidateId = partId end
 					end
 				end
 			end
-			selectTarget(candidateId)
-		else
-			selectTarget(nil)
 		end
+		selectTarget(candidateId)
 	end
 	local function updateTarget()
 		local point: Vector2? = nil
@@ -95,6 +96,7 @@ function InputController.new(player: Player, onAction: (string) -> (), onTarget:
 	table.insert(self.connections, UserInputService.TouchStarted:Connect(function(input, processed)
 		if not processed then findTarget(Vector2.new(input.Position.X, input.Position.Y)) end
 	end))
+	table.insert(self.connections, game:GetService("RunService").Heartbeat:Connect(updateTarget))
 	table.insert(self.connections, player.CharacterAdded:Connect(function() task.defer(updateTarget) end))
 	table.insert(self.connections, player.CharacterRemoving:Connect(function() selectTarget(nil) end))
 	connectCamera()

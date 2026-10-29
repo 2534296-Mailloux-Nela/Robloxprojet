@@ -69,7 +69,14 @@ local function sendAction(action: string, payload: {[string]: any})
 end
 
 local function sendContextAction()
-	if not state or not targetId then return end
+	if not state then
+		ui:Notice("En attente de l'état du serveur")
+		return
+	end
+	if not targetId then
+		ui:Notice("Aucune cible : approchez-vous d'une station (12 studs max)")
+		return
+	end
 	local station
 	for _, candidate in state.stations or {} do
 		if candidate.id == targetId then station = candidate; break end
@@ -120,7 +127,7 @@ local function perform(action: string)
 			if action == "BeginWork" and state then heldAction = action end
 			sendAction(action, { targetId = targetId })
 		else
-			sendContextAction()
+			ui:Notice("Aucune cible : approchez-vous d'une station (12 studs max)")
 		end
 	elseif action == "NextDay" then
 		sendAction(action, {})
