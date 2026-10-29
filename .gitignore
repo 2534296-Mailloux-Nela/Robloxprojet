@@ -1,0 +1,20 @@
+# Roblox Studio locks and generated test places
+*.rbxl.lock
+*.rbxlx.lock
+RestaurantSlice-test.rbxlx
+
+# Local credentials and environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and generated output
+node_modules/
+build/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db

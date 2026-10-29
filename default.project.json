@@ -1,0 +1,29 @@
+{
+  "name": "RestaurantSlice",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": { "$path": "src/shared" },
+      "Remotes": {
+        "$className": "Folder",
+        "ActionRequest": { "$className": "RemoteEvent" },
+        "ActionResult": { "$className": "RemoteEvent" },
+        "StateDelta": { "$className": "RemoteEvent" },
+        "SnapshotRequest": { "$className": "RemoteEvent" },
+        "StateSnapshot": { "$className": "RemoteEvent" }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "src/server"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "src/client"
+      }
+    }
+  }
+}
