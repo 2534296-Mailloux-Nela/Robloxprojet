@@ -71,7 +71,22 @@ NextDay/EndWork doivent être autorisées/rejetées par le serveur selon phase
 et droits. Le résumé/fermeture est affiché par la phase dans le HUD; le
 serveur décide des transitions.
 
-## Vérifications proposées (Studio)
+## Vérifications
+
+`tests/client/UIController.spec.luau` est un smoke test à coller dans la
+Command Bar **client** pendant Play. Avant de lancer Play, désactiver le
+`LocalScript` de bootstrap client dans le template
+`StarterPlayer/StarterPlayerScripts` : le test crée lui-même une UI et ne doit
+pas entrer en concurrence avec le bootstrap. Le script vérifie d'abord la
+présence du client (`Players.LocalPlayer`), puis attend au plus 10 secondes
+chaque élément de `LocalPlayer.PlayerScripts.Controllers.UIController` et
+charge ce module cloné côté client, jamais le template StarterPlayer. Son UI
+est détruite même si une assertion échoue. Il couvre l'état sans snapshot,
+l'affichage cible/progression/main, l'activation en Service, puis le
+verrouillage des actions au Bilan et au retour à l'attente. Il nécessite Studio
+et Roblox (UI, `PlayerGui`, services), et ne s'exécute pas hors Studio.
+Les callbacks d'activation ne sont pas simulés : leur test crédible nécessite
+des entrées GUI réelles dans Studio, pas l'invocation artificielle d'un signal.
 
 1. Démarrer sans Remotes/snapshot puis vérifier le statut d'attente, sans
    action réseau tant qu'aucun état/run n'est reçu.

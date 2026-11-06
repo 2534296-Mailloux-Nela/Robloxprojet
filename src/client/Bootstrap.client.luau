@@ -81,7 +81,10 @@ local function sendContextAction()
 	for _, candidate in state.stations or {} do
 		if candidate.id == targetId then station = candidate; break end
 	end
-	if not station then return end
+	if not station then
+		ui:Notice("Cible indisponible : attente de la mise à jour du serveur")
+		return
+	end
 	local me = state.players and state.players[tostring(player.UserId)]
 	local held = me and me.heldItem
 	local action: string?
