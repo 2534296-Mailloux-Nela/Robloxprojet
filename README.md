@@ -1,13 +1,14 @@
 # RestaurantSlice — vertical slice Roblox
 
-Prototype coopératif **en sources Rojo séparées**. `projet4000.rbxl` est la place existante : ce projet ne la convertit pas et ne modifie ni ce fichier ni `projet4000.rbxl.lock`.
+Prototype coopératif en sources Rojo. `RestaurantSlice-current.rbxl` est une **nouvelle place binaire** construite à partir des sources de `default.project.json` ; elle ne se met pas à jour automatiquement quand les sources changent. `projet4000.rbxl` est la place existante (ancienne version, non synchronisée avec ces sources) : ni elle ni `projet4000.rbxl.lock` n'ont été modifiés. Les essais manuels dans Roblox Studio restent à refaire sur la nouvelle place.
 
-## Import non destructif
+## Ouvrir la nouvelle version dans Studio
 
-1. Installer Rojo et son plugin Roblox Studio sur votre poste. Depuis ce dossier, vérifier `rojo --version` ; aucun outil Roblox n'est inclus dans le dépôt.
-2. Dans Studio, créer une **nouvelle place vide**, distincte de `projet4000.rbxl`. Depuis la racine du dépôt, lancer `rojo serve default.project.json` (serveur temporaire, arrêter après synchronisation), puis connecter le plugin Rojo à cette nouvelle place. Ne pas synchroniser sur la place binaire existante.
-3. Contrôler dans l'Explorer : `ReplicatedStorage.Shared.Protocol`, `ReplicatedStorage.Remotes.{ActionRequest,ActionResult,StateDelta,SnapshotRequest,StateSnapshot}` (cinq `RemoteEvent`), `ServerScriptService.Services.GameService`, `ServerScriptService.Infrastructure.NetworkService`, `ServerScriptService.Bootstrap` (Script) et `StarterPlayer.StarterPlayerScripts.Bootstrap` (LocalScript), `Controllers.InputController` et `Controllers.UIController` (ModuleScript). **Vérifier la classe de chaque script** avant Play ; si l'arbre diffère, ne pas enregistrer sur la place d'origine.
-4. Facultatif : produire ou reconstruire la place XML de test séparée par `C:/Users/2531075/Tools/rojo.exe build default.project.json -o RestaurantSlice-test.rbxlx` depuis la racine du dépôt, puis rouvrir **ce** fichier dans Studio avant Play. Ce build n'écrit que le fichier de test ignoré par Git ; ne jamais choisir `projet4000.rbxl` comme sortie. Sur un autre poste, utiliser le chemin du binaire Rojo installé localement.
+1. Dans Roblox Studio, ouvrir le fichier local `RestaurantSlice-current.rbxl` depuis la racine du dépôt (File > Open from File), **pas** `projet4000.rbxl`. La nouvelle place est autonome : pas besoin de lancer Rojo pour l'ouvrir. Ne pas enregistrer par-dessus `projet4000.rbxl`.
+2. Contrôler dans l'Explorer : `ReplicatedStorage.Shared.Protocol`, `ReplicatedStorage.Remotes.{ActionRequest,ActionResult,StateDelta,SnapshotRequest,StateSnapshot}` (cinq `RemoteEvent`), `ServerScriptService.Services.GameService`, `ServerScriptService.Infrastructure.NetworkService`, `ServerScriptService.Bootstrap` (Script) et `StarterPlayer.StarterPlayerScripts.Bootstrap` (LocalScript), `Controllers.InputController` et `Controllers.UIController` (ModuleScript). **Vérifier la classe de chaque script** avant Play ; si l'arbre diffère, ne pas enregistrer sur la place d'origine.
+3. Après toute modification des sources, reconstruire la place binaire depuis la racine du dépôt avec `C:/Users/2531075/Tools/rojo.exe build default.project.json -o RestaurantSlice-current.rbxl`, puis rouvrir **ce** fichier dans Studio avant Play. Sur un autre poste, adapter le chemin vers Rojo. Ne jamais utiliser `projet4000.rbxl` comme sortie.
+
+Autre méthode, sans toucher à la place existante : installer Rojo et son plugin Studio, créer une **nouvelle place vide**, puis lancer `rojo serve default.project.json` depuis la racine du dépôt et connecter le plugin à cette nouvelle place uniquement. Arrêter le serveur après synchronisation ; ne pas synchroniser sur `projet4000.rbxl`.
 
 ## Recette Play exacte (un joueur)
 
@@ -22,7 +23,7 @@ Prototype coopératif **en sources Rojo séparées**. `projet4000.rbxl` est la p
 
 ## Validation : structure hors Studio, puis Play manuel
 
-Depuis la racine du dépôt, sous Windows, lancer `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/test-runner/Validate-Place.ps1 -RojoPath 'C:/Users/2531075/Tools/rojo.exe'` (adapter `-RojoPath` au binaire Rojo local). Ce contrôle **structurel** construit une place jetable dans `build/`, vérifie sourcemap, XML, classes, sources embarquées et références statiques du protocole ; il ne lance ni Luau ni Play. Les lignes `PASS` sont décrites dans `docs/infrastructure/README.md`. Ouvrir ensuite dans Studio une place de test **reconstruite avec les sources courantes** (étape 4 ci-dessus ou nouvelle place Rojo), jamais `projet4000.rbxl`.
+Depuis la racine du dépôt, sous Windows, lancer `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/test-runner/Validate-Place.ps1 -RojoPath 'C:/Users/2531075/Tools/rojo.exe'` (adapter `-RojoPath` au binaire Rojo local). Ce contrôle **structurel** construit une place jetable dans `build/`, vérifie sourcemap, XML, classes, sources embarquées et références statiques du protocole ; il ne lance ni Luau ni Play. Les lignes `PASS` sont décrites dans `docs/infrastructure/README.md`. Ouvrir ensuite `RestaurantSlice-current.rbxl` dans Studio (le reconstruire si les sources ont changé, étape 3 ci-dessus) ou une nouvelle place Rojo, jamais `projet4000.rbxl`. Le build ne valide pas le comportement en Play : la recette et les essais manuels ci-dessous restent à effectuer sur la nouvelle place.
 
 Pour les scénarios suivants, ouvrir View > Command Bar **pendant Play**, choisir le contexte **Server** ou **Client** indiqué, coller **tout le fichier** depuis le dépôt et vérifier la ligne attendue dans Output. Les désactivations se font **avant** Play, chacune sur une copie jetable distincte ; réactiver les bootstraps pour la recette de jeu normale :
 
