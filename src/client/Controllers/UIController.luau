@@ -39,28 +39,80 @@ function UIController.new(player: Player)
 		buttons[spec[2]] = button
 	end
 	local self = setmetatable({ gui = gui, status = status, detail = detail, targetLabel = targetLabel, noticeLabel = notice, buttons = buttons, noticeText = "En attente de l'état du serveur", actionCallback = nil, targetCallback = nil, connections = {} }, UIController)
+	local workInput: InputObject? = nil
+	local function endWork(input: InputObject?)
+		if not workInput or (input and input ~= workInput) then return end
+		workInput = nil
+		if self.actionCallback then self.actionCallback("EndWork", "HUD") end
+	end
+	local function beginWork(input: InputObject)
+		if workInput or not buttons.BeginWork.Active then return end
+		workInput = input
+		if self.actionCallback then self.actionCallback("BeginWork", "HUD", if self.targetCallback then self.targetCallback() else nil) end
+	end
 	for action, button in buttons do
 		if action == "BeginWork" then
 			table.insert(self.connections, button.InputBegan:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Gamepad1 then
-					if self.actionCallback then self.actionCallback("BeginWork") end
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					beginWork(input)
 				end
 			end))
-			table.insert(self.connections, button.InputEnded:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.Gamepad1 then
-					if self.actionCallback then self.actionCallback("EndWork") end
-				end
-			end))
+
+			table.insert(self.connections, button.InputEnded:Connect(endWork))
 		else
-			table.insert(self.connections, button.Activated:Connect(function()
-				if self.actionCallback then self.actionCallback(action) end
+			local pressInput: InputObject? = nil
+			local pressTarget: string? = nil
+			table.insert(self.connections, button.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					pressInput = input
+					pressTarget = if self.targetCallback then self.targetCallback() else nil
+				end
+			end))
+			table.insert(self.connections, button.Activated:Connect(function(input)
+				local target = if pressInput == input then pressTarget else if self.targetCallback then self.targetCallback() else nil
+				pressInput = nil
+				pressTarget = nil
+				if self.actionCallback then self.actionCallback(action, "HUD", target) end
+			end))
+			table.insert(self.connections, UserInputService.InputEnded:Connect(function(input)
+				if input == pressInput then
+					task.defer(function()
+						if pressInput == input then pressInput = nil; pressTarget = nil end
+					end)
+				end
+			end))
+			table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
+				if input == pressInput and input.UserInputState == Enum.UserInputState.Cancel then
+					pressInput = nil
+					pressTarget = nil
+				end
+			end))
+			table.insert(self.connections, UserInputService.WindowFocusReleased:Connect(function()
+				pressInput = nil
+				pressTarget = nil
+			end))
+			table.insert(self.connections, player.CharacterRemoving:Connect(function()
+				pressInput = nil
+				pressTarget = nil
 			end))
 		end
 	end
+	table.insert(self.connections, UserInputService.InputBegan:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.ButtonA and GuiService.SelectedObject == buttons.BeginWork then beginWork(input) end
+	end))
+	table.insert(self.connections, UserInputService.InputEnded:Connect(endWork))
+	table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
+		if input.UserInputState == Enum.UserInputState.Cancel then endWork(input) end
+	end))
+	table.insert(self.connections, GuiService:GetPropertyChangedSignal("SelectedObject"):Connect(function()
+		if workInput and workInput.KeyCode == Enum.KeyCode.ButtonA and GuiService.SelectedObject ~= buttons.BeginWork then endWork(nil) end
+	end))
+	table.insert(self.connections, UserInputService.WindowFocusReleased:Connect(function() endWork(nil) end))
+	table.insert(self.connections, player.CharacterRemoving:Connect(function() endWork(nil) end))
 	return self
 end
 
-function UIController:SetActionCallback(callback: (string) -> ()) self.actionCallback = callback end
+function UIController:SetActionCallback(callback: (string, string, string?) -> ()) self.actionCallback = callback end
 function UIController:SetTargetCallback(callback: () -> string?) self.targetCallback = callback end
 
 function UIController:Notice(text: string)

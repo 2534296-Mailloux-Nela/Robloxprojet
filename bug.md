@@ -10,12 +10,12 @@ Statut au 29 octobre 2026 : le prototype a été lancé dans Roblox Studio sur `
 
 ## Réserves découvertes pendant la revue du correctif
 
-Ces points demandent un correctif sous-agent et une recette Studio ; **ne pas annoncer l'incident résolu** avant vérification :
+Les risques techniques 1–4 ont un correctif dans les sources client, non vérifié dans Studio ; **ne pas annoncer l'incident résolu** avant recette :
 
-1. `InputController.luau` lit `result.Instance.Position` après un raycast sans vérifier que l'instance est une `BasePart` : si le rayon touche `Terrain`, risque d'erreur runtime. Garder la validation de portée côté serveur et vérifier le type de l'instance avant lecture.
-2. Le nouveau repli recherche des descendants à chaque `Heartbeat`, sans mise en cache ni limite de fréquence. Profiler et réduire le coût ; vérifier la borne (`< 12` côté client contre `<= 12` côté serveur).
-3. Le rafraîchissement automatique peut écraser une station choisie au toucher, ou changer la cible sous le HUD au moment du clic. Préserver la cible explicitement choisie tant qu'elle reste atteignable.
-4. Le bouton « Travailler » envoie `EndWork` sur `InputEnded` du bouton lui-même : vérifier relâchement hors bouton, annulation tactile et navigation manette ; ne pas laisser un travail actif sans fin client. Les protections serveur restent nécessaires.
+1. Corrigé statiquement : `InputController.luau` vérifie que le résultat du raycast est une `BasePart` avant de lire `Position`. Tester le rayon contre `Terrain` en Studio ; le serveur reste arbitre de la portée.
+2. Corrigé statiquement : cache des descendants rafraîchi au plus toutes les 0,15 s et sélection limitée à 0,1 s. Profiler en Studio ; le client utilise `< 11,9` studs et le serveur valide `<= 12`.
+3. Corrigé statiquement : la cible touchée reste prioritaire tant qu'elle est à portée. Les boutons HUD mémorisent la cible au début de l'appui souris/tactile et l'utilisent à l'activation, sans se rabattre sur la nouvelle station si la cible initiale est absente. Vérifier en Studio avec joystick mobile et déplacement durant l'appui ; le serveur vérifie toujours la portée.
+4. Corrigé statiquement : l'entrée qui a initié `BeginWork` possède le maintien (`F`, `R2` ou HUD). Un second appui est ignoré et son relâchement ne termine plus le travail de la première source ; perte de focus et disparition du personnage forcent toujours `EndWork`. Vérifier relâchement hors bouton, annulation tactile, navigation manette et appuis croisés en Studio. Les protections serveur restent nécessaires.
 5. Tester réellement la recette salade (prise, planche, découpe, assiette, commande, service, évier), le changement de jour, la déconnexion et deux joueurs. Vérifier Output client/serveur ; aucun test de cette liste n'est confirmé réussi.
 
 ## État local et reprise

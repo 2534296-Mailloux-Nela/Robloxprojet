@@ -26,7 +26,7 @@ local waitingForSnapshot = false
 
 local pending: {[string]: string} = {}
 local targetId: string? = nil
-local heldAction: string? = nil
+local heldSource: string? = nil
 local disposed = false
 
 local function render()
@@ -106,14 +106,15 @@ local function sendContextAction()
 	end
 end
 
-local function perform(action: string)
+local function perform(action: string, source: string?, uiTarget: string?)
+	local actionTarget = if source == "HUD" then uiTarget else targetId
 	if action == "Context" then
 		sendContextAction()
 		return
 	end
 	if action == "EndWork" then
-		if heldAction == "BeginWork" then
-			heldAction = nil
+		if heldSource and (source == nil or source == heldSource) then
+			heldSource = nil
 			sendAction("EndWork", {})
 		end
 		return
@@ -123,9 +124,16 @@ local function perform(action: string)
 		local currentlyReady = state and state.readyPlayers and state.readyPlayers[userId] == true
 		sendAction("SetReady", { ready = not currentlyReady })
 	elseif action == "PickUp" or action == "PutDown" or action == "BeginWork" or action == "TakeOrder" or action == "Serve" then
-		if targetId then
-			if action == "BeginWork" and state then heldAction = action end
-			sendAction(action, { targetId = targetId })
+		if actionTarget then
+			if action == "BeginWork" and not state then
+				ui:Notice("En attente de l'état du serveur")
+				return
+			end
+			if action == "BeginWork" then
+				if heldSource then return end
+				heldSource = source
+			end
+			sendAction(action, { targetId = actionTarget })
 		else
 			ui:Notice("Aucune cible : approchez-vous d'une station (12 studs max)")
 		end
@@ -134,8 +142,8 @@ local function perform(action: string)
 	end
 end
 
-local input = InputController.new(player, function(action) perform(action) end, function(id) targetId = id; render() end)
-ui:SetActionCallback(function(action) perform(action) end)
+local input = InputController.new(player, function(action, source) perform(action, source) end, function(id) targetId = id; render() end)
+ui:SetActionCallback(function(action, source, capturedTarget) perform(action, source, capturedTarget) end)
 ui:SetTargetCallback(function() return targetId end)
 
 local connections: {RBXScriptConnection} = {}
@@ -147,7 +155,11 @@ table.insert(connections, actionResult.OnClientEvent:Connect(function(result: an
 	if result.status == "Accepted" then
 		ui:Notice(action .. " confirmé (révision " .. tostring(result.committedRevision) .. ")")
 	elseif result.status == "Rejected" then
-		ui:Notice(action .. " refusé : " .. tostring(result.code))
+		if action == "EndWork" and result.code == "NotWorking" then
+			ui:Notice("Travail terminé ou déjà interrompu")
+		else
+			ui:Notice(action .. " refusé : " .. tostring(result.code))
+		end
 	else
 		ui:Notice("Réponse serveur invalide")
 	end
@@ -168,7 +180,10 @@ table.insert(connections, stateSnapshot.OnClientEvent:Connect(function(message: 
 		waitingForSnapshot = false
 		return
 	end
-	if message.runId ~= runId then table.clear(pending) end
+	if message.runId ~= runId then
+		table.clear(pending)
+		heldSource = nil
+	end
 	runId = message.runId
 	revision = message.revision
 	state = message.stateChunk
@@ -196,8 +211,8 @@ end))
 local function cleanup()
 	if disposed then return end
 	disposed = true
-	if heldAction then
-		heldAction = nil
+	if heldSource then
+		heldSource = nil
 		if runId then
 			requestSequence += 1
 			actionRequest:FireServer({ protocolVersion = protocolVersion, runId = runId, requestId = string.format("%s:%d", sessionId, requestSequence), action = "EndWork", expectedEntityRevisions = {}, payload = {} })
@@ -209,7 +224,10 @@ local function cleanup()
 end
 
 table.insert(connections, player.CharacterRemoving:Connect(function()
-	if heldAction then perform("EndWork") end
+	perform("EndWork")
+end))
+table.insert(connections, game:GetService("UserInputService").WindowFocusReleased:Connect(function()
+	perform("EndWork")
 end))
 table.insert(connections, script.Destroying:Connect(cleanup))
 requestSnapshot()

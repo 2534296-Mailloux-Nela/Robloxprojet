@@ -29,20 +29,37 @@ révision confirmée. Aucun rejeu automatique d'action n'est fait.
 ## Ciblage et contrôles
 
 Les pièces interactives du monde doivent exposer `TargetId` (string) sur
-une Part ou un parent; un raycast client PC/mobile/manette identifie la
-cible. L'interaction contextuelle lit `InteractionAction` sur cette même
-instance et n'émet que `BeginWork`, `TakeOrder` ou `Serve`. Sinon, les
-boutons explicites Prendre, Poser, Travailler, Commande et Servir envoient
-l'action sur la cible sélectionnée. Les boutons tactiles de
-`ContextActionService` proposent aussi les contrôles sur mobile/manette.
+une Part ou un parent dans `workspace.RestaurantSlice`. Une sélection
+explicitement touchée reste prioritaire tant que la station est à portée ;
+sinon, un raycast valide est prioritaire, puis la station BasePart la plus
+proche à moins de 11,9 studs, avec départage par identifiant. Le cache de
+candidats est rafraîchi au plus toutes les 0,15 s, et immédiatement lors
+d'un toucher explicite. Le pointeur au-dessus du HUD conserve la cible
+précédente seulement si elle est encore à portée. Le serveur reste seul
+arbitre de la portée (inférieure ou égale à 12 studs, avec marge client).
+L'interaction contextuelle n'émet que les actions définies par le flux
+client ; aucun attribut client ne fait autorité. Les boutons explicites
+Prendre, Poser, Travailler, Commande et Servir envoient
+l'action sur la cible sélectionnée. Un appui souris/tactile sur un bouton
+HUD capture cette cible dès `InputBegan` et la réutilise à `Activated`, même
+si le joystick ou la sélection automatique la modifie entre-temps ; sans
+cible au début de l'appui, l'action ne se recible pas à la fin. Le serveur
+reste responsable de la validation de portée au moment de la requête. Les
+boutons tactiles de `ContextActionService` proposent aussi les contrôles sur mobile/manette.
 Le client ne construit aucun identifiant de station/recette fixe.
 
 Contrôles clavier : souris/raycast pour la cible, `E` interaction, `Q`
 prendre, `R` poser, `F` travail, `1` commande, `2` servir, `Y` prêt.
-Les binds CAS fournissent les boutons tactiles/manette adaptés. En phase de
-préparation, `F` doit être maintenu; le relâchement, l'annulation d'input ou
-la disparition du personnage envoient `EndWork`. La durée de travail et sa
-validation restent serveur. `SetReady` bascule depuis l'état confirmé.
+Les binds CAS fournissent aussi les contrôles tactiles/manette adaptés.
+Pour découper ou laver en phase Service, maintenir `F`, `R2` ou le bouton
+« Travailler » (souris/toucher, `A` sur le bouton sélectionné à la manette).
+Le relâchement, l'annulation d'input, la perte de focus et la disparition du
+personnage interrompent le travail. Un seul maintien est propriétaire du
+travail : un second appui (`F`, `R2` ou HUD) est ignoré et son relâchement
+n'envoie pas `EndWork` ; seule la source propriétaire peut l'interrompre,
+sauf perte de focus ou disparition du personnage. La durée et la
+validation restent serveur. `SetReady` bascule
+depuis l'état confirmé.
 
 ## Portée et recette manuelle
 
@@ -66,13 +83,21 @@ serveur décide des transitions.
    snapshot fragmenté; vérifier demande de snapshot / refus fragmenté.
 5. Cliquer chaque action avec et sans cible; vérifier qu'aucune action
    n'apparaît confirmée avant le résultat serveur.
-6. Maintenir/relâcher F et tester perte de focus/disparition personnage;
-   confirmer qu'un seul BeginWork et un EndWork sont envoyés, sans boucle.
-7. Vérifier navigation focus clavier/manette et lisibilité sur viewport
+6. Maintenir/relâcher F et les boutons HUD (relâcher hors bouton, autres
+   doigts, souris et `A` manette), tester annulation, perte de focus et
+   disparition du personnage ; confirmer un seul BeginWork/EndWork par
+   maintien, sans boucle. Maintenir `F`, appuyer puis relâcher « Travailler »
+   sur le HUD sans relâcher `F` : le travail doit continuer jusqu'au
+   relâchement de `F` (et inversement). Refaire avec `F` et `R2`.
+7. Sur mobile, commencer un appui sur « Prendre » avec une station ciblée,
+   déplacer le joystick vers une autre station avant de relâcher : la
+   requête doit viser la cible du début d'appui, ou être refusée par le
+   serveur si elle est devenue hors de portée. Refaire sans cible initiale.
+8. Vérifier navigation focus clavier/manette et lisibilité sur viewport
    étroit et touch. Confirmer les attributs `TargetId`/
-   `InteractionAction` des Parts livrées par le serveur.
+   `InteractionAction` des Parts livrées par le serveur. Tester aussi le
+   rayon contre `Terrain` et la perte de cible à la sortie de portée.
 
 Aucun test Studio n'a été exécuté dans cet environnement. Snapshot chunké,
-révisions d'entités, relance idempotente après perte d'ack et sélection
-nearest sans cible sous le réticule nécessitent un contrat serveur plus
-précis avant d'être revendiqués.
+révisions d'entités et relance idempotente après perte d'ack ne sont pas
+pris en charge par ce client.
